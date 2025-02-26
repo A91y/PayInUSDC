@@ -12,19 +12,8 @@ import {
   getTokenPriceInUSDC,
 } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { USDC_MINT } from "@/lib/contants";
-
-interface Token {
-  mint: string;
-  symbol?: string;
-  name?: string;
-  amount: string;
-  decimals: number;
-  uiAmount: number;
-  uiAmountString: string;
-  logoURI?: string;
-  isEnhanced?: boolean;
-}
+import { SOL_TOKEN, USDC_MINT } from "@/lib/contants";
+import { Token } from "@/lib/types";
 
 // Utility function for caching token details (unchanged)
 const getCachedTokenDetails = async (mint: string) => {
@@ -49,7 +38,6 @@ const getCachedTokenDetails = async (mint: string) => {
   }
 };
 
-// AnimatedNumber component (unchanged)
 const AnimatedNumber = ({
   value,
   decimals = 2,
@@ -87,7 +75,6 @@ const AnimatedNumber = ({
   return <span>{displayValue.toFixed(decimals)}</span>;
 };
 
-// ParticleEffect component (unchanged)
 const ParticleEffect = ({ active }: { active: boolean }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -220,11 +207,43 @@ export default function PaymentPage() {
   }, []);
 
   useEffect(() => {
-    setCurrentPrice(null);
-    setEquivalentTokenAmount(0);
-    setCanSend(false);
-    setHasFetchedPrice(false);
-  }, [selectedToken]);
+    if (selectedToken) {
+      if (selectedToken.mint === SOL_TOKEN.mint) {
+        // For SOL: calculate equivalent based on price (SOL per USDC)
+        if (currentPrice && usdcAmount > 0) {
+          const equivalent = usdcAmount / currentPrice;
+          setEquivalentTokenAmount(equivalent);
+          const requiredAmount = BigInt(
+            Math.ceil(equivalent * 10 ** selectedToken.decimals)
+          );
+          const userBalance = BigInt(selectedToken.amount);
+          setCanSend(userBalance >= requiredAmount);
+        } else {
+          setEquivalentTokenAmount(0);
+          setCanSend(false);
+        }
+      } else if (selectedToken.mint === USDC_MINT.toBase58()) {
+        // For USDC: use amount directly
+        setEquivalentTokenAmount(usdcAmount);
+        const requiredAmount = BigInt(
+          Math.floor(usdcAmount * 10 ** selectedToken.decimals)
+        );
+        const userBalance = BigInt(selectedToken.amount);
+        setCanSend(usdcAmount > 0 && userBalance >= requiredAmount);
+      } else if (currentPrice && usdcAmount > 0) {
+        // For other tokens
+        const decimals = selectedToken.decimals;
+        const equivalent = (usdcAmount * currentPrice) / 10 ** decimals;
+        setEquivalentTokenAmount(equivalent);
+        const requiredAmount = BigInt(Math.floor(equivalent * 10 ** decimals));
+        const userBalance = BigInt(selectedToken.amount);
+        setCanSend(userBalance >= requiredAmount);
+      } else {
+        setEquivalentTokenAmount(0);
+        setCanSend(false);
+      }
+    }
+  }, [selectedToken, currentPrice, usdcAmount]);
 
   useEffect(() => {
     if (selectedToken) {
@@ -276,9 +295,21 @@ export default function PaymentPage() {
       const nonZeroTokens = tokenData.filter(
         (token) => parseFloat(token.uiAmountString) > 0
       );
-      setTokens(nonZeroTokens);
-      if (nonZeroTokens.length > 0) {
-        setSelectedToken(nonZeroTokens[0]);
+
+      // Fetch SOL balance
+      const solBalance = await connection.getBalance(publicKey);
+      const solToken: Token = {
+        ...SOL_TOKEN,
+        amount: solBalance.toString(),
+        uiAmount: solBalance / 1e9,
+        uiAmountString: (solBalance / 1e9).toFixed(9),
+      };
+
+      // Combine SOL and SPL tokens
+      const allTokens = [solToken, ...nonZeroTokens];
+      setTokens(allTokens);
+      if (allTokens.length > 0) {
+        setSelectedToken(allTokens[0]);
       }
       const fetchId = Date.now();
       latestFetchId.current = fetchId;
@@ -290,6 +321,7 @@ export default function PaymentPage() {
     }
   };
 
+  // Enhance SPL tokens in background (skip SOL)
   const enhanceTokensInBackground = async (
     baseTokens: Token[],
     fetchId: number
@@ -310,9 +342,13 @@ export default function PaymentPage() {
     });
     const enhancedTokens = await Promise.all(enhancementPromises);
     if (isMounted.current && fetchId === latestFetchId.current) {
-      setTokens(enhancedTokens);
+      setTokens((prevTokens) => {
+        const solToken = prevTokens.find((t) => t.mint === SOL_TOKEN.mint);
+        const updatedSplTokens = enhancedTokens;
+        return solToken ? [solToken, ...updatedSplTokens] : updatedSplTokens;
+      });
       setSelectedToken((prev) => {
-        if (prev) {
+        if (prev && prev.mint !== SOL_TOKEN.mint) {
           const updatedToken = enhancedTokens.find((t) => t.mint === prev.mint);
           return updatedToken || prev;
         }
