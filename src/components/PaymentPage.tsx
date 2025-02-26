@@ -296,7 +296,7 @@ export default function PaymentPage() {
   };
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-md space-y-6">
       <div className="flex items-center mb-4">
         <h2 className="text-xl font-semibold">Payment Page</h2>
         <div className="relative ml-2 group">
@@ -312,12 +312,14 @@ export default function PaymentPage() {
         </div>
       </div>
       {loading ? (
-        <div className="text-center p-4">Loading tokens...</div>
+        <div className="flex justify-center items-center p-4">
+          <div className="spinner spinner-lg"></div>
+        </div>
       ) : tokens.length > 0 ? (
         <div className="relative">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex justify-between items-center w-full px-4 py-2 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
+            className="flex justify-between items-center w-full px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 transition-all duration-200"
           >
             <div className="flex items-center">
               {selectedToken && (
@@ -338,7 +340,7 @@ export default function PaymentPage() {
               )}
             </div>
             <svg
-              className={`w-5 h-5 transition-transform ${
+              className={`w-5 h-5 transition-transform duration-300 ${
                 isDropdownOpen ? "rotate-180" : ""
               }`}
               fill="none"
@@ -353,36 +355,40 @@ export default function PaymentPage() {
               ></path>
             </svg>
           </button>
-          {isDropdownOpen && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
-              {tokens.map((token, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  onClick={() => {
-                    setSelectedToken(token);
-                    setIsDropdownOpen(false);
-                  }}
-                >
-                  <div className="flex items-center">
-                    {token.logoURI ? (
-                      <img
-                        src={token.logoURI}
-                        alt={token.symbol}
-                        className="w-6 h-6 rounded-full mr-2"
-                      />
-                    ) : (
-                      <div className="w-6 h-6 bg-gray-200 rounded-full mr-2 flex items-center justify-center">
-                        {token.symbol?.[0]}
-                      </div>
-                    )}
-                    <span>{token.symbol}</span>
-                  </div>
-                  <span>{token.uiAmountString}</span>
+          <div
+            className={`absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto transition-all duration-300 ease-in-out ${
+              isDropdownOpen
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 -translate-y-2 pointer-events-none"
+            }`}
+          >
+            {tokens.map((token, index) => (
+              <div
+                key={index}
+                className="flex justify-between items-center px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors duration-150"
+                onClick={() => {
+                  setSelectedToken(token);
+                  setIsDropdownOpen(false);
+                }}
+              >
+                <div className="flex items-center">
+                  {token.logoURI ? (
+                    <img
+                      src={token.logoURI}
+                      alt={token.symbol}
+                      className="w-6 h-6 rounded-full mr-2"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 bg-gray-200 rounded-full mr-2 flex items-center justify-center">
+                      {token.symbol?.[0]}
+                    </div>
+                  )}
+                  <span>{token.symbol}</span>
                 </div>
-              ))}
-            </div>
-          )}
+                <span>{token.uiAmountString}</span>
+              </div>
+            ))}
+          </div>
           <div className="mt-4">
             <label
               htmlFor="usdcAmount"
@@ -395,28 +401,37 @@ export default function PaymentPage() {
               id="usdcAmount"
               value={usdcAmount}
               onChange={(e) => setUsdcAmount(parseFloat(e.target.value) || 0)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-200"
               min="0"
             />
           </div>
           <div className="mt-4">
             <button
               onClick={fetchPrice}
-              className="px-3 py-1 text-sm font-medium bg-blue-500 text-white rounded-full shadow hover:bg-blue-600 transition-all disabled:bg-gray-300"
+              className="px-3 py-1 text-sm font-medium bg-indigo-500 text-white rounded-full shadow hover:bg-indigo-600 transition-all duration-200 disabled:bg-gray-300 flex items-center justify-center min-w-[100px]"
               disabled={isFetchingPrice || !selectedToken}
             >
-              {isFetchingPrice ? "Fetching..." : "Fetch Price"}
+              {isFetchingPrice ? (
+                <div className="spinner"></div>
+              ) : (
+                "Fetch Price"
+              )}
             </button>
           </div>
           <div className="mt-4">
-            {currentPrice !== null ? (
-              <p className="text-sm text-gray-500">
-                Equivalent in {selectedToken?.symbol}:{" "}
-                {equivalentTokenAmount.toFixed(selectedToken?.decimals || 2)}
-              </p>
-            ) : isFetchingPrice ? (
-              <p className="text-sm text-gray-500">Fetching price...</p>
-            ) : hasFetchedPrice ? (
+            <div
+              className={`transition-opacity duration-300 ${
+                currentPrice !== null ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              {currentPrice !== null && (
+                <p className="text-sm text-gray-500">
+                  Equivalent in {selectedToken?.symbol}:{" "}
+                  {equivalentTokenAmount.toFixed(selectedToken?.decimals || 2)}
+                </p>
+              )}
+            </div>
+            {currentPrice === null && hasFetchedPrice && (
               <div className="flex items-center p-3 bg-red-100 border border-red-300 rounded-md">
                 <svg
                   className="w-5 h-5 text-red-500 mr-2"
@@ -436,7 +451,8 @@ export default function PaymentPage() {
                   Trade route not available
                 </p>
               </div>
-            ) : (
+            )}
+            {!hasFetchedPrice && !isFetchingPrice && (
               <p className="text-sm text-gray-500">
                 Click 'Fetch Price' to calculate equivalent
               </p>
@@ -454,7 +470,7 @@ export default function PaymentPage() {
               id="receiverAddress"
               value={receiverAddress}
               onChange={(e) => setReceiverAddress(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-200"
             />
           </div>
           <div className="mt-4">
@@ -466,7 +482,7 @@ export default function PaymentPage() {
                 !isValidAddress(receiverAddress) ||
                 isTransferring
               }
-              className={`w-full px-4 py-2 font-medium text-white rounded-md ${
+              className={`w-full px-4 py-2 font-medium text-white rounded-md flex items-center justify-center transition-all duration-200 ${
                 canSend &&
                 receiverAddress &&
                 isValidAddress(receiverAddress) &&
@@ -475,7 +491,14 @@ export default function PaymentPage() {
                   : "bg-gray-400 cursor-not-allowed"
               }`}
             >
-              {isTransferring ? "Sending..." : "Send"}
+              {isTransferring ? (
+                <>
+                  <div className="spinner mr-2"></div>
+                  Sending...
+                </>
+              ) : (
+                "Send"
+              )}
             </button>
             <div className="mt-2">
               {getDisableReason() && (
@@ -485,7 +508,7 @@ export default function PaymentPage() {
           </div>
         </div>
       ) : (
-        <div className="text-center p-4 border border-gray-300 rounded">
+        <div className="text-center p-4 bg-white rounded-lg shadow-md">
           No tokens found in this wallet
         </div>
       )}
