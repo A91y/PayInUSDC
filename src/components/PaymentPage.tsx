@@ -375,8 +375,7 @@ export default function PaymentPage() {
         });
       } else {
         // Swap transaction for other tokens
-        const decimals = selectedToken.decimals;
-        const outAmountAtomic = Number(usdcAmount) * 10 ** decimals;
+        const outAmountAtomic = Number(usdcAmount) * 10 ** 6;
 
         const { error: quoteError, quoteResponse } = await getExactOutQuote(
           outAmountAtomic,
