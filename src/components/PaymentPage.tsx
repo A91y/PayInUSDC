@@ -197,6 +197,7 @@ export default function PaymentPage() {
   const [hasFetchedPrice, setHasFetchedPrice] = useState(false);
   const [showParticles, setShowParticles] = useState(false);
   const [transactionSuccess, setTransactionSuccess] = useState(false);
+  const [txid, setTxid] = useState<string | null>(null);
   const latestFetchId = useRef(0);
   const isMounted = useRef(true);
 
@@ -385,12 +386,14 @@ export default function PaymentPage() {
       );
 
       console.log("Transaction successful, TxID:", txid);
+      setTxid(txid);
       setTransactionSuccess(true);
       setShowParticles(true);
 
       setTimeout(() => {
         setTransactionSuccess(false);
         setShowParticles(false);
+        setTxid(null);
         if (publicKey) fetchTokens(publicKey);
       }, 3000);
     } catch (error: any) {
@@ -844,31 +847,41 @@ export default function PaymentPage() {
           </AnimatePresence>
 
           <AnimatePresence>
-            {transactionSuccess && (
+            {transactionSuccess && txid && (
               <motion.div
-                className="mt-4 p-3 bg-green-50 border border-green-100 rounded-xl"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
+                className="mt-4 p-4 bg-green-100 border border-green-200 rounded-xl shadow-lg"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
               >
-                <div className="flex items-center">
-                  <svg
-                    className="w-5 h-5 text-green-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <svg
+                      className="w-6 h-6 text-green-500 mr-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <p className="text-green-700 font-semibold">
+                      Transaction Successful!
+                    </p>
+                  </div>
+                  <a
+                    href={`https://solscan.io/tx/${txid}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 hover:text-indigo-800 font-medium text-sm transition-colors duration-200"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    ></path>
-                  </svg>
-                  <p className="text-sm text-green-700">
-                    Transaction Successful
-                  </p>
+                    View on Solscan
+                  </a>
                 </div>
               </motion.div>
             )}
