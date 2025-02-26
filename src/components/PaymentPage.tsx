@@ -425,7 +425,8 @@ export default function PaymentPage() {
   const getDisableReason = () => {
     if (!hasFetchedPrice) return "";
     if (!selectedToken) return "Please select a token.";
-    if (usdcAmount <= 0) return "Please enter a USDC amount greater than 0.";
+    if (usdcAmount <= 0 && currentPrice !== null)
+      return "Please enter a USDC amount greater than 0.";
     if (currentPrice === null) {
       if (!hasFetchedPrice) return "Please fetch the price.";
       else return "";
@@ -806,16 +807,41 @@ export default function PaymentPage() {
                   transition={{ duration: 1, repeat: Infinity }}
                 />
               )}
-
               {isTransferring ? (
                 <span className="relative z-10">Transferring...</span>
               ) : (
                 <span className="relative z-10">Send</span>
               )}
-
               <ParticleEffect active={isTransferring} />
             </motion.button>
           </motion.div>
+
+          <AnimatePresence>
+            {getDisableReason() && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="mt-2 p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-sm text-indigo-700 flex items-center"
+              >
+                <svg
+                  className="w-5 h-5 text-indigo-500 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>{getDisableReason()}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatePresence>
             {transactionSuccess && (
