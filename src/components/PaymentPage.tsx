@@ -535,30 +535,44 @@ export default function PaymentPage() {
     >
       <ParticleEffect active={showParticles} />
 
-      <motion.div
-        className="flex items-center mb-4"
-        initial={{ x: -20 }}
-        animate={{ x: 0 }}
-        transition={{ delay: 0.2, duration: 0.4 }}
-      >
-        <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600">
-          Payment Page
-        </h2>
-        <div className="relative ml-2 group">
-          <motion.div
-            className="cursor-help w-5 h-5 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-xs font-semibold text-white italic"
-            whileHover={{ scale: 1.2 }}
-            transition={{ type: "spring", stiffness: 400, damping: 10 }}
-          >
-            i
-          </motion.div>
-          <div className="absolute z-10 w-64 bg-gradient-to-br from-gray-900 to-gray-800 text-white text-xs rounded-lg py-3 px-4 right-0 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-            If token names are not displayed properly then it is due to
-            tokens.jup.ag rate limit. This code assumes USDC Token Amount for
-            receiver is already initialized.
-            <div className="absolute bottom-0 right-0 w-2 h-2 -mb-1 mr-3 rotate-45 bg-gray-900"></div>
-          </div>
+      <div className="absolute top-4 right-4 group">
+        <motion.div
+          className="cursor-help w-5 h-5 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-xs font-semibold text-white italic"
+          whileHover={{ scale: 1.2 }}
+          transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        >
+          i
+        </motion.div>
+        <div className="absolute z-10 w-64 bg-gradient-to-br from-gray-900 to-gray-800 text-white text-xs rounded-lg py-3 px-4 right-0 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+          If token names are not displayed properly then it is due to
+          tokens.jup.ag rate limit. This code assumes USDC Token Amount for
+          receiver is already initialized. The available of service is subject
+          to availability of Jupiter API & Free RPC.
+          <div className="absolute bottom-0 right-0 w-2 h-2 -mb-1 mr-3 rotate-45 bg-gray-900"></div>
         </div>
+      </div>
+
+      <motion.div
+        className="text-center"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+      >
+        <h2 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-700">
+          Pay In USDC
+        </h2>
+
+        <p className="mt-1 text-sm text-gray-600">
+          by{" "}
+          <a
+            href="https://ayushagr.me"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-indigo-600 hover:text-indigo-800 transition-colors duration-200 underline underline-offset-2"
+          >
+            Ayushag
+          </a>
+        </p>
       </motion.div>
 
       {loading ? (
@@ -569,165 +583,361 @@ export default function PaymentPage() {
         >
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
         </motion.div>
-      ) : tokens.length > 0 ? (
-        <div className="relative">
-          <motion.button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex justify-between items-center w-full px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <div className="flex items-center">
-              {selectedToken && (
-                <>
-                  {selectedToken.logoURI ? (
-                    <motion.img
-                      src={selectedToken.logoURI}
-                      alt={selectedToken.symbol}
-                      className="w-8 h-8 rounded-full mr-3"
-                      initial={{ rotate: 0 }}
-                      animate={{ rotate: isDropdownOpen ? 180 : 0 }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  ) : (
-                    <motion.div
-                      className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full mr-3 flex items-center justify-center text-white font-medium"
-                      initial={{ rotate: 0 }}
-                      animate={{ rotate: isDropdownOpen ? 180 : 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      {selectedToken.symbol?.[0]}
-                    </motion.div>
-                  )}
-                  <span className="font-medium">{selectedToken.symbol}</span>
-                </>
-              )}
-            </div>
-            <motion.svg
-              className="w-5 h-5"
-              initial={{ rotate: 0 }}
-              animate={{ rotate: isDropdownOpen ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M19 9l-7 7-7-7"
-              ></path>
-            </motion.svg>
-          </motion.button>
-
-          <AnimatePresence>
-            {isDropdownOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -10, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: "auto" }}
-                exit={{ opacity: 0, y: -10, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto"
-              >
-                {tokens.map((token, index) => (
-                  <motion.div
-                    key={index}
-                    className="flex justify-between items-center px-4 py-3 hover:bg-indigo-50 cursor-pointer transition-colors duration-150"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05, duration: 0.2 }}
-                    onClick={() => {
-                      setSelectedToken(token);
-                      setIsDropdownOpen(false);
-                    }}
-                    whileHover={{ x: 5 }}
-                  >
-                    <div className="flex items-center">
-                      {token.logoURI ? (
-                        <img
-                          src={token.logoURI}
-                          alt={token.symbol}
-                          className="w-8 h-8 rounded-full mr-3"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full mr-3 flex items-center justify-center text-white font-medium">
-                          {token.symbol?.[0]}
-                        </div>
-                      )}
-                      <span className="font-medium">{token.symbol}</span>
-                    </div>
-                    <span className="text-gray-600">
-                      {token.uiAmountString}
-                    </span>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <motion.div
-            className="mt-6"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-          >
-            <label
-              htmlFor="usdcAmount"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Amount in USDC
-            </label>
-            <motion.div
+      ) : wallet?.adapter?.connected ? (
+        tokens.length > 0 ? (
+          <div className="relative">
+            <motion.button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex justify-between items-center w-full px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="relative"
             >
-              <input
-                type="number"
-                id="usdcAmount"
-                value={usdcAmount}
-                onChange={(e) => setUsdcAmount(parseFloat(e.target.value) || 0)}
-                className="block w-full px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-200"
-                min="0"
-                placeholder="Enter amount..."
-              />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
-                USDC
+              <div className="flex items-center">
+                {selectedToken && (
+                  <>
+                    {selectedToken.logoURI ? (
+                      <motion.img
+                        src={selectedToken.logoURI}
+                        alt={selectedToken.symbol}
+                        className="w-8 h-8 rounded-full mr-3"
+                        initial={{ rotate: 0 }}
+                        animate={{ rotate: isDropdownOpen ? 180 : 0 }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    ) : (
+                      <motion.div
+                        className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full mr-3 flex items-center justify-center text-white font-medium"
+                        initial={{ rotate: 0 }}
+                        animate={{ rotate: isDropdownOpen ? 180 : 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {selectedToken.symbol?.[0]}
+                      </motion.div>
+                    )}
+                    <span className="font-medium">{selectedToken.symbol}</span>
+                  </>
+                )}
               </div>
-            </motion.div>
-          </motion.div>
+              <motion.svg
+                className="w-5 h-5"
+                initial={{ rotate: 0 }}
+                animate={{ rotate: isDropdownOpen ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 9l-7 7-7-7"
+                ></path>
+              </motion.svg>
+            </motion.button>
 
-          <motion.div
-            className="mt-4"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.4 }}
-          >
-            <motion.button
-              onClick={fetchPrice}
-              className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl shadow hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center min-w-[120px]"
-              disabled={
-                isFetchingPrice ||
-                !selectedToken ||
-                selectedToken.mint === USDC_MINT.toBase58()
-              }
-              whileHover={{
-                scale: 1.05,
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {isFetchingPrice ? (
+            <AnimatePresence>
+              {isDropdownOpen && (
                 <motion.div
-                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  initial={{ opacity: 0, y: -10, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: "auto" }}
+                  exit={{ opacity: 0, y: -10, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto"
+                >
+                  {tokens.map((token, index) => (
+                    <motion.div
+                      key={index}
+                      className="flex justify-between items-center px-4 py-3 hover:bg-indigo-50 cursor-pointer transition-colors duration-150"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05, duration: 0.2 }}
+                      onClick={() => {
+                        setSelectedToken(token);
+                        setIsDropdownOpen(false);
+                      }}
+                      whileHover={{ x: 5 }}
+                    >
+                      <div className="flex items-center">
+                        {token.logoURI ? (
+                          <img
+                            src={token.logoURI}
+                            alt={token.symbol}
+                            className="w-8 h-8 rounded-full mr-3"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full mr-3 flex items-center justify-center text-white font-medium">
+                            {token.symbol?.[0]}
+                          </div>
+                        )}
+                        <span className="font-medium">{token.symbol}</span>
+                      </div>
+                      <span className="text-gray-600">
+                        {token.uiAmountString}
+                      </span>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <motion.div
+              className="mt-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+            >
+              <label
+                htmlFor="usdcAmount"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Amount in USDC
+              </label>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="relative"
+              >
+                <input
+                  type="number"
+                  id="usdcAmount"
+                  value={usdcAmount}
+                  onChange={(e) =>
+                    setUsdcAmount(parseFloat(e.target.value) || 0)
+                  }
+                  className="block w-full px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-200"
+                  min="0"
+                  placeholder="Enter amount..."
                 />
-              ) : (
-                <>
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                  USDC
+                </div>
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              className="mt-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
+            >
+              <motion.button
+                onClick={fetchPrice}
+                className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl shadow hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center min-w-[120px]"
+                disabled={
+                  isFetchingPrice ||
+                  !selectedToken ||
+                  selectedToken.mint === USDC_MINT.toBase58()
+                }
+                whileHover={{
+                  scale: 1.05,
+                  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {isFetchingPrice ? (
+                  <motion.div
+                    className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                  />
+                ) : (
+                  <>
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                      />
+                    </svg>
+                    Fetch Price
+                  </>
+                )}
+              </motion.button>
+            </motion.div>
+
+            <AnimatePresence>
+              {currentPrice !== null &&
+                selectedToken?.mint !== USDC_MINT.toBase58() && (
+                  <motion.div
+                    className="mt-4 p-3 bg-indigo-50 rounded-xl border border-indigo-100"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="flex items-center">
+                      <div className="mr-2 text-indigo-500">
+                        <svg
+                          className="w-5 h-5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-indigo-700">
+                        Equivalent in {selectedToken?.symbol}:{" "}
+                        <span className="font-bold">
+                          <AnimatedNumber
+                            value={equivalentTokenAmount}
+                            decimals={selectedToken?.decimals || 2}
+                          />
+                        </span>
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {currentPrice === null &&
+                hasFetchedPrice &&
+                selectedToken?.mint !== USDC_MINT.toBase58() && (
+                  <motion.div
+                    className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="flex items-center">
+                      <svg
+                        className="w-5 h-5 text-red-500 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        ></path>
+                      </svg>
+                      <p className="text-sm text-red-700">
+                        Trade route not available
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+            </AnimatePresence>
+
+            {!hasFetchedPrice &&
+              !isFetchingPrice &&
+              selectedToken?.mint !== USDC_MINT.toBase58() && (
+                <motion.p
+                  className="mt-2 text-sm text-gray-500 italic"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.8 }}
+                  transition={{ delay: 0.5, duration: 0.4 }}
+                >
+                  Click 'Fetch Price' to calculate equivalent
+                </motion.p>
+              )}
+
+            <motion.div
+              className="mt-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.4 }}
+            >
+              <label
+                htmlFor="receiverAddress"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Receiver's Wallet Address
+              </label>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <input
+                  type="text"
+                  id="receiverAddress"
+                  value={receiverAddress}
+                  onChange={(e) => setReceiverAddress(e.target.value)}
+                  className="block w-full px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-200"
+                  placeholder="Enter wallet address..."
+                />
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              className="mt-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.4 }}
+            >
+              <motion.button
+                onClick={handleSend}
+                disabled={
+                  !canSend ||
+                  !receiverAddress ||
+                  !isValidAddress(receiverAddress) ||
+                  isTransferring
+                }
+                className={`relative w-full px-4 py-3 font-medium text-white rounded-xl flex items-center justify-center transition-all duration-300 overflow-hidden ${
+                  canSend &&
+                  receiverAddress &&
+                  isValidAddress(receiverAddress) &&
+                  !isTransferring
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 shadow-lg hover:shadow-xl"
+                    : "bg-gray-400 cursor-not-allowed"
+                }`}
+                whileHover={{
+                  scale:
+                    canSend &&
+                    receiverAddress &&
+                    isValidAddress(receiverAddress) &&
+                    !isTransferring
+                      ? 1.05
+                      : 1,
+                }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {isTransferring && (
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-700"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  />
+                )}
+                {isTransferring ? (
+                  <span className="relative z-10">Transferring...</span>
+                ) : (
+                  <span className="relative z-10">Send</span>
+                )}
+                <ParticleEffect active={isTransferring} />
+              </motion.button>
+            </motion.div>
+
+            <AnimatePresence>
+              {getDisableReason() && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-2 p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-sm text-indigo-700 flex items-center"
+                >
                   <svg
-                    className="w-4 h-4 mr-2"
+                    className="w-5 h-5 text-indigo-500 mr-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -736,244 +946,63 @@ export default function PaymentPage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth="2"
-                      d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  Fetch Price
-                </>
+                  <span>{getDisableReason()}</span>
+                </motion.div>
               )}
-            </motion.button>
-          </motion.div>
+            </AnimatePresence>
 
-          <AnimatePresence>
-            {currentPrice !== null &&
-              selectedToken?.mint !== USDC_MINT.toBase58() && (
+            <AnimatePresence>
+              {transactionSuccess && txid && (
                 <motion.div
-                  className="mt-4 p-3 bg-indigo-50 rounded-xl border border-indigo-100"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
+                  className="mt-4 p-4 bg-green-100 border border-green-200 rounded-xl shadow-lg"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.5 }}
                 >
-                  <div className="flex items-center">
-                    <div className="mr-2 text-indigo-500">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
                       <svg
-                        className="w-5 h-5"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
+                        className="w-6 h-6 text-green-500 mr-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
                         <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z"
-                          clipRule="evenodd"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M5 13l4 4L19 7"
                         />
                       </svg>
+                      <p className="text-green-700 font-semibold">
+                        Transaction Successful!
+                      </p>
                     </div>
-                    <p className="text-sm text-indigo-700">
-                      Equivalent in {selectedToken?.symbol}:{" "}
-                      <span className="font-bold">
-                        <AnimatedNumber
-                          value={equivalentTokenAmount}
-                          decimals={selectedToken?.decimals || 2}
-                        />
-                      </span>
-                    </p>
+                    <a
+                      href={`https://solscan.io/tx/${txid}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 hover:text-indigo-800 font-medium text-sm transition-colors duration-200"
+                    >
+                      View on Solscan
+                    </a>
                   </div>
                 </motion.div>
               )}
-          </AnimatePresence>
-
-          <AnimatePresence>
-            {currentPrice === null &&
-              hasFetchedPrice &&
-              selectedToken?.mint !== USDC_MINT.toBase58() && (
-                <motion.div
-                  className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="flex items-center">
-                    <svg
-                      className="w-5 h-5 text-red-500 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      ></path>
-                    </svg>
-                    <p className="text-sm text-red-700">
-                      Trade route not available
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-          </AnimatePresence>
-
-          {!hasFetchedPrice &&
-            !isFetchingPrice &&
-            selectedToken?.mint !== USDC_MINT.toBase58() && (
-              <motion.p
-                className="mt-2 text-sm text-gray-500 italic"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.8 }}
-                transition={{ delay: 0.5, duration: 0.4 }}
-              >
-                Click 'Fetch Price' to calculate equivalent
-              </motion.p>
-            )}
-
-          <motion.div
-            className="mt-6"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.4 }}
-          >
-            <label
-              htmlFor="receiverAddress"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Receiver's Wallet Address
-            </label>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <input
-                type="text"
-                id="receiverAddress"
-                value={receiverAddress}
-                onChange={(e) => setReceiverAddress(e.target.value)}
-                className="block w-full px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-200"
-                placeholder="Enter wallet address..."
-              />
-            </motion.div>
-          </motion.div>
-
-          <motion.div
-            className="mt-6"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.4 }}
-          >
-            <motion.button
-              onClick={handleSend}
-              disabled={
-                !canSend ||
-                !receiverAddress ||
-                !isValidAddress(receiverAddress) ||
-                isTransferring
-              }
-              className={`relative w-full px-4 py-3 font-medium text-white rounded-xl flex items-center justify-center transition-all duration-300 overflow-hidden ${
-                canSend &&
-                receiverAddress &&
-                isValidAddress(receiverAddress) &&
-                !isTransferring
-                  ? "bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 shadow-lg hover:shadow-xl"
-                  : "bg-gray-400 cursor-not-allowed"
-              }`}
-              whileHover={{
-                scale:
-                  canSend &&
-                  receiverAddress &&
-                  isValidAddress(receiverAddress) &&
-                  !isTransferring
-                    ? 1.05
-                    : 1,
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {isTransferring && (
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-700"
-                  initial={{ x: "-100%" }}
-                  animate={{ x: "100%" }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                />
-              )}
-              {isTransferring ? (
-                <span className="relative z-10">Transferring...</span>
-              ) : (
-                <span className="relative z-10">Send</span>
-              )}
-              <ParticleEffect active={isTransferring} />
-            </motion.button>
-          </motion.div>
-
-          <AnimatePresence>
-            {getDisableReason() && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="mt-2 p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-sm text-indigo-700 flex items-center"
-              >
-                <svg
-                  className="w-5 h-5 text-indigo-500 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span>{getDisableReason()}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <AnimatePresence>
-            {transactionSuccess && txid && (
-              <motion.div
-                className="mt-4 p-4 bg-green-100 border border-green-200 rounded-xl shadow-lg"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <svg
-                      className="w-6 h-6 text-green-500 mr-3"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <p className="text-green-700 font-semibold">
-                      Transaction Successful!
-                    </p>
-                  </div>
-                  <a
-                    href={`https://solscan.io/tx/${txid}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-indigo-600 hover:text-indigo-800 font-medium text-sm transition-colors duration-200"
-                  >
-                    View on Solscan
-                  </a>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+            </AnimatePresence>
+          </div>
+        ) : (
+          <div className="text-center text-gray-500">
+            No tokens found in your wallet.
+          </div>
+        )
       ) : (
         <div className="text-center text-gray-500">
-          No tokens found in your wallet.
+          Please connect your wallet.
         </div>
       )}
     </motion.div>
