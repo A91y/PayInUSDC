@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   ConnectionProvider,
   WalletProvider,
@@ -10,9 +10,12 @@ import {
   PhantomWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { Connection } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-const HELIUS_RPC_URL = process.env.NEXT_PUBLIC_HELIUS_RPC_URL!;
+// Define RPC URLs
+const PRIMARY_RPC_URL = process.env.NEXT_PUBLIC_HELIUS_RPC_URL!;
+const SECONDARY_RPC_URL = process.env.NEXT_PUBLIC_SECONDARY_RPC_URL!;
 
 export default function WalletProviderWrapper({
   children,
@@ -24,8 +27,30 @@ export default function WalletProviderWrapper({
     []
   );
 
+  const [currentRpc, setCurrentRpc] = useState(PRIMARY_RPC_URL);
+  const [rpcList] = useState([PRIMARY_RPC_URL, SECONDARY_RPC_URL]);
+
+  useEffect(() => {
+    const checkRpcAvailability = async () => {
+      for (const rpc of rpcList) {
+        try {
+          const connection = new Connection(rpc, "confirmed");
+          await connection.getVersion();
+          setCurrentRpc(rpc);
+          console.log(`Connected to RPC: ${rpc}`);
+          return;
+        } catch (error) {
+          console.error(`RPC ${rpc} is unavailable:`, error);
+        }
+      }
+      console.error("All RPCs are unavailable.");
+    };
+
+    checkRpcAvailability();
+  }, [rpcList]);
+
   return (
-    <ConnectionProvider endpoint={HELIUS_RPC_URL}>
+    <ConnectionProvider endpoint={currentRpc}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
