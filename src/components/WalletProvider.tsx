@@ -35,7 +35,7 @@ export default function WalletProviderWrapper({
       for (const rpc of rpcList) {
         try {
           const connection = new Connection(rpc, "confirmed");
-          await connection.getVersion();
+          await connection.getSupply("confirmed");
           setCurrentRpc(rpc);
           console.log(`Connected to RPC: ${rpc}`);
           return;
