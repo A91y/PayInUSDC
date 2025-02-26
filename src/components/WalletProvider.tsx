@@ -12,8 +12,7 @@ import {
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-const HELIUS_RPC_URL =
-  "https://mainnet.helius-rpc.com/?api-key=756d0ea2-087c-444d-bbe1-58d9c12786d5";
+const HELIUS_RPC_URL = process.env.NEXT_PUBLIC_HELIUS_RPC_URL!;
 
 export default function WalletProviderWrapper({
   children,
