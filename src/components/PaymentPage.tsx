@@ -65,9 +65,9 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (selectedToken && currentPrice && usdcAmount > 0) {
-      const equivalent = usdcAmount * currentPrice;
-      setEquivalentTokenAmount(equivalent);
       const decimals = selectedToken.decimals;
+      const equivalent = (usdcAmount * currentPrice) / 10 ** decimals;
+      setEquivalentTokenAmount(equivalent);
       const multiplier = 10 ** decimals;
       const requiredAmount = BigInt(Math.floor(equivalent * multiplier));
       const userBalance = BigInt(selectedToken.amount);
@@ -207,7 +207,19 @@ export default function PaymentPage() {
 
   return (
     <div className="w-full max-w-md">
-      <h2 className="text-xl font-semibold mb-4">Payment Page</h2>
+      <div className="flex items-center mb-4">
+        <h2 className="text-xl font-semibold">Payment Page</h2>
+        <div className="relative ml-2 group">
+          <div className="cursor-help w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center text-xs font-semibold text-gray-600 italic">
+            i
+          </div>
+          <div className="absolute z-10 w-64 bg-black text-white text-xs rounded py-2 px-3 right-0 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+            If token names are not displayed properly then it is due to
+            tokens.jup.ag rate limit.
+            <div className="absolute bottom-0 right-0 w-2 h-2 -mb-1 mr-3 rotate-45 bg-black"></div>
+          </div>
+        </div>
+      </div>
       {loading ? (
         <div className="text-center p-4">Loading tokens...</div>
       ) : tokens.length > 0 ? (
@@ -291,7 +303,7 @@ export default function PaymentPage() {
               type="number"
               id="usdcAmount"
               value={usdcAmount}
-              onChange={(e) => setUsdcAmount(parseFloat(e.target.value) || 0)}
+              onChange={(e) => setUsdcAmount(parseFloat(e.target.value) || 1)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="0"
             />
@@ -311,10 +323,7 @@ export default function PaymentPage() {
             {currentPrice !== null ? (
               <p className="text-sm text-gray-500">
                 Equivalent in {selectedToken?.symbol}:{" "}
-                {(
-                  equivalentTokenAmount /
-                  10 ** (selectedToken?.decimals || 2)
-                ).toFixed(selectedToken?.decimals || 2)}
+                {equivalentTokenAmount.toFixed(selectedToken?.decimals || 2)}
               </p>
             ) : isFetchingPrice ? (
               <p className="text-sm text-gray-500">Fetching price...</p>
