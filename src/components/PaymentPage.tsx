@@ -5,9 +5,10 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
+  buildSwapTransaction,
+  getExactOutQuote,
   getTokenDetails,
   getTokenPriceInUSDC,
-  transferToken,
 } from "@/lib/utils";
 
 interface Token {
@@ -22,8 +23,31 @@ interface Token {
   isEnhanced?: boolean;
 }
 
+// Utility function for caching token details
+const getCachedTokenDetails = async (mint: string) => {
+  const cacheKey = `token_${mint}`;
+  const cachedData = localStorage.getItem(cacheKey);
+  if (cachedData) {
+    try {
+      return JSON.parse(cachedData);
+    } catch (e) {
+      console.error(`Error parsing cached data for ${mint}:`, e);
+    }
+  }
+  try {
+    const details = await getTokenDetails(mint);
+    if (details) {
+      localStorage.setItem(cacheKey, JSON.stringify(details));
+    }
+    return details;
+  } catch (error) {
+    console.error(`Error fetching token details for ${mint}:`, error);
+    return null;
+  }
+};
+
 export default function PaymentPage() {
-  const { publicKey, wallet } = useWallet();
+  const { publicKey, wallet, signTransaction } = useWallet();
   const { connection } = useConnection();
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(false);
@@ -122,23 +146,18 @@ export default function PaymentPage() {
     fetchId: number
   ) => {
     const enhancementPromises = baseTokens.map(async (token) => {
-      try {
-        const details = await getTokenDetails(token.mint);
-        if (details) {
-          return {
-            ...token,
-            symbol: details.symbol || token.symbol,
-            name: details.name || token.name,
-            logoURI: details.logoURI || token.logoURI,
-            decimals: details.decimals || token.decimals,
-            isEnhanced: true,
-          };
-        }
-        return token;
-      } catch (error) {
-        console.error(`Error enhancing token ${token.mint}:`, error);
-        return token;
+      const details = await getCachedTokenDetails(token.mint);
+      if (details) {
+        return {
+          ...token,
+          symbol: details.symbol || token.symbol,
+          name: details.name || token.name,
+          logoURI: details.logoURI || token.logoURI,
+          decimals: details.decimals || token.decimals,
+          isEnhanced: true,
+        };
       }
+      return token;
     });
     const enhancedTokens = await Promise.all(enhancementPromises);
     if (isMounted.current && fetchId === latestFetchId.current) {
@@ -157,8 +176,13 @@ export default function PaymentPage() {
     if (!selectedToken) return;
     setIsFetchingPrice(true);
     try {
-      const price = await getTokenPriceInUSDC(selectedToken.mint);
-      setCurrentPrice(price);
+      const resp = await getTokenPriceInUSDC(selectedToken.mint);
+      if (!resp) {
+        setCurrentPrice(null);
+        setHasFetchedPrice(true);
+        return;
+      }
+      setCurrentPrice(resp?.inAmount);
       setHasFetchedPrice(true);
     } catch (error) {
       console.error("Error fetching token price:", error);
@@ -171,26 +195,76 @@ export default function PaymentPage() {
   };
 
   const handleSend = async () => {
-    if (!selectedToken || !receiverAddress || equivalentTokenAmount <= 0)
+    if (
+      !selectedToken ||
+      !receiverAddress ||
+      equivalentTokenAmount <= 0 ||
+      !publicKey ||
+      !usdcAmount ||
+      !signTransaction
+    ) {
+      alert("Please ensure all fields are filled and wallet is connected.");
       return;
+    }
+
+    setIsTransferring(true);
     try {
-      setIsTransferring(true);
       const decimals = selectedToken.decimals;
-      const multiplier = 10 ** decimals;
-      const amountToTransfer = BigInt(
-        Math.floor(equivalentTokenAmount * multiplier)
+      const outAmountAtomic = Number(usdcAmount) * 10 ** decimals;
+
+      const { error: quoteError, quoteResponse } = await getExactOutQuote(
+        outAmountAtomic,
+        selectedToken.mint
       );
-      await transferToken(
-        wallet,
-        selectedToken.mint,
-        amountToTransfer.toString(),
-        receiverAddress
+      if (quoteError || !quoteResponse) {
+        console.error("Quote error:", quoteError || "No quote found");
+        throw new Error(
+          "Failed to get swap quote. Trade route may not be available."
+        );
+      }
+
+      const transaction = await buildSwapTransaction({
+        quoteResponse,
+        userPublicKey: publicKey,
+        destinationAccount: receiverAddress,
+      });
+
+      const signedTx = await signTransaction(transaction);
+      const rawTx = signedTx.serialize();
+
+      const latestBlockhash = await connection.getLatestBlockhashAndContext();
+      const txid = await connection.sendRawTransaction(rawTx, {
+        skipPreflight: false,
+        maxRetries: 5,
+      });
+
+      await connection.confirmTransaction(
+        {
+          signature: txid,
+          blockhash: latestBlockhash.value.blockhash,
+          lastValidBlockHeight: latestBlockhash.value.lastValidBlockHeight,
+        },
+        "finalized"
       );
+
+      console.log("Transaction successful, TxID:", txid);
       alert("Transfer successful!");
-      if (publicKey) fetchTokens(publicKey);
-    } catch (error) {
-      console.error("Error transferring token:", error);
-      alert("Transfer failed. Please try again.");
+      if (publicKey) await fetchTokens(publicKey);
+    } catch (error: any) {
+      console.error("Error during transfer:", error);
+      let errorMessage = "Transfer failed. Please try again.";
+      if (error.message) {
+        errorMessage = `Transfer failed: ${error.message}`;
+      }
+      if (typeof error.getLogs === "function") {
+        try {
+          const logs = await error.getLogs();
+          console.error("Transaction logs:", logs.join("\n"));
+        } catch (logError) {
+          console.error("Error retrieving logs:", logError);
+        }
+      }
+      alert(errorMessage);
     } finally {
       setIsTransferring(false);
     }
@@ -205,6 +279,22 @@ export default function PaymentPage() {
     }
   };
 
+  const getDisableReason = () => {
+    if (!hasFetchedPrice) return "";
+    if (!selectedToken) return "Please select a token.";
+    if (usdcAmount <= 0) return "Please enter a USDC amount greater than 0.";
+    if (currentPrice === null) {
+      if (!hasFetchedPrice) return "Please fetch the price.";
+      else return "";
+    }
+    if (!receiverAddress) return "Please enter a receiver's wallet address.";
+    if (!isValidAddress(receiverAddress))
+      return "Please enter a valid Solana wallet address.";
+    if (!canSend) return "Insufficient balance for the selected token.";
+    if (isTransferring) return "";
+    return "";
+  };
+
   return (
     <div className="w-full max-w-md">
       <div className="flex items-center mb-4">
@@ -215,7 +305,8 @@ export default function PaymentPage() {
           </div>
           <div className="absolute z-10 w-64 bg-black text-white text-xs rounded py-2 px-3 right-0 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
             If token names are not displayed properly then it is due to
-            tokens.jup.ag rate limit.
+            tokens.jup.ag rate limit. This code assumes USDC Token Amount for
+            receiver is already initialized.
             <div className="absolute bottom-0 right-0 w-2 h-2 -mb-1 mr-3 rotate-45 bg-black"></div>
           </div>
         </div>
@@ -303,12 +394,11 @@ export default function PaymentPage() {
               type="number"
               id="usdcAmount"
               value={usdcAmount}
-              onChange={(e) => setUsdcAmount(parseFloat(e.target.value) || 1)}
+              onChange={(e) => setUsdcAmount(parseFloat(e.target.value) || 0)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="0"
             />
           </div>
-          {/* Fetch Price Button */}
           <div className="mt-4">
             <button
               onClick={fetchPrice}
@@ -318,7 +408,6 @@ export default function PaymentPage() {
               {isFetchingPrice ? "Fetching..." : "Fetch Price"}
             </button>
           </div>
-          {/* Equivalent Display */}
           <div className="mt-4">
             {currentPrice !== null ? (
               <p className="text-sm text-gray-500">
@@ -388,6 +477,11 @@ export default function PaymentPage() {
             >
               {isTransferring ? "Sending..." : "Send"}
             </button>
+            <div className="mt-2">
+              {getDisableReason() && (
+                <p className="text-sm text-red-500">{getDisableReason()}</p>
+              )}
+            </div>
           </div>
         </div>
       ) : (

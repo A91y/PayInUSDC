@@ -1,5 +1,11 @@
 import fetch from "cross-fetch";
 import { USDC_MINT } from "./contants";
+import { PublicKey, VersionedTransaction } from "@solana/web3.js";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddressSync,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 
 interface TokenDetails {
   address: string;
@@ -30,7 +36,7 @@ export const getTokenDetails = async (
 
 export const getTokenPriceInUSDC = async (
   mintAddress: string
-): Promise<number | null> => {
+): Promise<{ inAmount: number; quoteResponse: any } | null> => {
   const resp = await getExactOutQuote(1000000, mintAddress);
   if (resp.error) {
     return null;
@@ -41,7 +47,7 @@ export const getTokenPriceInUSDC = async (
     return null;
   }
 
-  return inAmount;
+  return { inAmount, quoteResponse: resp.quoteResponse };
 };
 
 export async function getExactOutQuote(
@@ -113,12 +119,72 @@ export async function getExactOutQuote(
   }
 }
 
-export const transferToken = async (
-  from: any,
-  to: any,
-  amount: any,
-  mintAddress: any
-  // wallet: any
-): Promise<string> => {
-  return "";
-};
+export async function buildSwapTransaction({
+  quoteResponse,
+  userPublicKey,
+  destinationAccount,
+  jupiterApiKey,
+}: {
+  quoteResponse: any;
+  userPublicKey: PublicKey;
+  destinationAccount: string;
+  jupiterApiKey?: string;
+}): Promise<VersionedTransaction> {
+  const apiKey = jupiterApiKey || process.env.JUPITER_API_KEY;
+  const destinationTokenAccount = getAssociatedTokenAddressSync(
+    USDC_MINT,
+    new PublicKey(destinationAccount),
+    true,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  ).toBase58();
+  const resp = await fetch("https://api.jup.ag/swap/v1/swap", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(apiKey ? { "x-api-key": apiKey } : {}),
+    },
+    body: JSON.stringify({
+      quoteResponse,
+      userPublicKey: userPublicKey.toBase58(),
+      destinationTokenAccount,
+      wrapAndUnwrapSol: true,
+      dynamicSlippage: true,
+      dynamicComputeUnitLimit: true,
+      prioritizationFeeLamports: {
+        priorityLevelWithMaxLamports: {
+          maxLamports: 1_000_000,
+          priorityLevel: "high",
+        },
+      },
+    }),
+  });
+
+  if (!resp.ok) {
+    throw new Error(`Failed to build swap transaction. Status: ${resp.status}`);
+  }
+
+  const swapData = await resp.json();
+
+  if (swapData.error) {
+    throw new Error(swapData.error);
+  }
+
+  // Check for simulation errors returned by Jupiter
+  if (swapData.simulationError) {
+    throw new Error(
+      `Simulation Error: ${JSON.stringify(swapData.simulationError)}`
+    );
+  }
+
+  const { swapTransaction } = swapData;
+  if (!swapTransaction) {
+    throw new Error("No swapTransaction returned from Jupiter");
+  }
+
+  // Decode and deserialize the transaction
+  const txBuffer = Buffer.from(swapTransaction, "base64");
+  const tx = VersionedTransaction.deserialize(txBuffer);
+
+  return tx;
+}
