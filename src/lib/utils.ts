@@ -1,8 +1,14 @@
 import fetch from "cross-fetch";
 import { USDC_MINT } from "./contants";
-import { PublicKey, VersionedTransaction } from "@solana/web3.js";
+import {
+  PublicKey,
+  Transaction,
+  TransactionMessage,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  createTransferInstruction,
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -187,4 +193,49 @@ export async function buildSwapTransaction({
   const tx = VersionedTransaction.deserialize(txBuffer);
 
   return tx;
+}
+
+export async function buildUsdcTransferTransaction({
+  senderPublicKey,
+  recipientPublicKey,
+  amount,
+  recentBlockhash,
+}: {
+  senderPublicKey: PublicKey;
+  recipientPublicKey: PublicKey;
+  amount: number;
+  recentBlockhash: string;
+}): Promise<VersionedTransaction> {
+  const senderTokenAccount = getAssociatedTokenAddressSync(
+    USDC_MINT,
+    senderPublicKey,
+    true,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+
+  const recipientTokenAccount = getAssociatedTokenAddressSync(
+    USDC_MINT,
+    recipientPublicKey,
+    true,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+
+  const transferInstruction = createTransferInstruction(
+    senderTokenAccount,
+    recipientTokenAccount,
+    senderPublicKey,
+    amount
+  );
+
+  const messageV0 = new TransactionMessage({
+    payerKey: senderPublicKey,
+    recentBlockhash,
+    instructions: [transferInstruction],
+  }).compileToV0Message();
+
+  const transaction = new VersionedTransaction(messageV0);
+
+  return transaction;
 }

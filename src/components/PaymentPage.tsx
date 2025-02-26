@@ -2,15 +2,17 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, VersionedTransaction } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   buildSwapTransaction,
+  buildUsdcTransferTransaction,
   getExactOutQuote,
   getTokenDetails,
   getTokenPriceInUSDC,
 } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { USDC_MINT } from "@/lib/contants";
 
 interface Token {
   mint: string;
@@ -24,7 +26,7 @@ interface Token {
   isEnhanced?: boolean;
 }
 
-// Utility function for caching token details
+// Utility function for caching token details (unchanged)
 const getCachedTokenDetails = async (mint: string) => {
   const cacheKey = `token_${mint}`;
   const cachedData = localStorage.getItem(cacheKey);
@@ -47,7 +49,7 @@ const getCachedTokenDetails = async (mint: string) => {
   }
 };
 
-// Animated number component for smooth transitions
+// AnimatedNumber component (unchanged)
 const AnimatedNumber = ({
   value,
   decimals = 2,
@@ -63,7 +65,7 @@ const AnimatedNumber = ({
 
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / 500, 1); // 500ms animation
+      const progress = Math.min((timestamp - startTime) / 500, 1);
 
       const currentValue = progress * value;
       setDisplayValue(currentValue);
@@ -85,7 +87,7 @@ const AnimatedNumber = ({
   return <span>{displayValue.toFixed(decimals)}</span>;
 };
 
-// Particle effect component for the send button
+// ParticleEffect component (unchanged)
 const ParticleEffect = ({ active }: { active: boolean }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -225,17 +227,27 @@ export default function PaymentPage() {
   }, [selectedToken]);
 
   useEffect(() => {
-    if (selectedToken && currentPrice && usdcAmount > 0) {
-      const decimals = selectedToken.decimals;
-      const equivalent = (usdcAmount * currentPrice) / 10 ** decimals;
-      setEquivalentTokenAmount(equivalent);
-      const multiplier = 10 ** decimals;
-      const requiredAmount = BigInt(Math.floor(equivalent * multiplier));
-      const userBalance = BigInt(selectedToken.amount);
-      setCanSend(userBalance >= requiredAmount);
-    } else {
-      setEquivalentTokenAmount(0);
-      setCanSend(false);
+    if (selectedToken) {
+      if (selectedToken.mint === USDC_MINT.toBase58()) {
+        // For USDC, use the entered amount directly
+        setEquivalentTokenAmount(usdcAmount);
+        const requiredAmount = BigInt(
+          Math.floor(usdcAmount * 10 ** selectedToken.decimals)
+        );
+        const userBalance = BigInt(selectedToken.amount);
+        setCanSend(usdcAmount > 0 && userBalance >= requiredAmount);
+      } else if (currentPrice && usdcAmount > 0) {
+        const decimals = selectedToken.decimals;
+        const equivalent = (usdcAmount * currentPrice) / 10 ** decimals;
+        setEquivalentTokenAmount(equivalent);
+        const multiplier = 10 ** decimals;
+        const requiredAmount = BigInt(Math.floor(equivalent * multiplier));
+        const userBalance = BigInt(selectedToken.amount);
+        setCanSend(userBalance >= requiredAmount);
+      } else {
+        setEquivalentTokenAmount(0);
+        setCanSend(false);
+      }
     }
   }, [selectedToken, currentPrice, usdcAmount]);
 
@@ -310,7 +322,7 @@ export default function PaymentPage() {
   };
 
   const fetchPrice = async () => {
-    if (!selectedToken) return;
+    if (!selectedToken || selectedToken.mint === USDC_MINT.toBase58()) return;
     setIsFetchingPrice(true);
     try {
       const resp = await getTokenPriceInUSDC(selectedToken.mint);
@@ -347,25 +359,42 @@ export default function PaymentPage() {
     setIsTransferring(true);
     setShowParticles(false);
     try {
-      const decimals = selectedToken.decimals;
-      const outAmountAtomic = Number(usdcAmount) * 10 ** decimals;
+      let transaction: VersionedTransaction;
 
-      const { error: quoteError, quoteResponse } = await getExactOutQuote(
-        outAmountAtomic,
-        selectedToken.mint
-      );
-      if (quoteError || !quoteResponse) {
-        console.error("Quote error:", quoteError || "No quote found");
-        throw new Error(
-          "Failed to get swap quote. Trade route may not be available."
+      if (selectedToken.mint === USDC_MINT.toBase58()) {
+        // Direct USDC transfer
+        const amountAtomic = Math.floor(
+          usdcAmount * 10 ** selectedToken.decimals
         );
-      }
+        const latestBlockhash = await connection.getLatestBlockhash();
+        transaction = await buildUsdcTransferTransaction({
+          senderPublicKey: publicKey,
+          recipientPublicKey: new PublicKey(receiverAddress),
+          amount: amountAtomic,
+          recentBlockhash: latestBlockhash.blockhash,
+        });
+      } else {
+        // Swap transaction for other tokens
+        const decimals = selectedToken.decimals;
+        const outAmountAtomic = Number(usdcAmount) * 10 ** decimals;
 
-      const transaction = await buildSwapTransaction({
-        quoteResponse,
-        userPublicKey: publicKey,
-        destinationAccount: receiverAddress,
-      });
+        const { error: quoteError, quoteResponse } = await getExactOutQuote(
+          outAmountAtomic,
+          selectedToken.mint
+        );
+        if (quoteError || !quoteResponse) {
+          console.error("Quote error:", quoteError || "No quote found");
+          throw new Error(
+            "Failed to get swap quote. Trade route may not be available."
+          );
+        }
+
+        transaction = await buildSwapTransaction({
+          quoteResponse,
+          userPublicKey: publicKey,
+          destinationAccount: receiverAddress,
+        });
+      }
 
       const signedTx = await signTransaction(transaction);
       const rawTx = signedTx.serialize();
@@ -426,20 +455,31 @@ export default function PaymentPage() {
   };
 
   const getDisableReason = () => {
-    if (!hasFetchedPrice) return "";
-    if (!selectedToken) return "Please select a token.";
-    if (usdcAmount <= 0 && currentPrice !== null)
-      return "Please enter a USDC amount greater than 0.";
-    if (currentPrice === null) {
-      if (!hasFetchedPrice) return "Please fetch the price.";
-      else return "";
+    if (selectedToken?.mint === USDC_MINT.toBase58()) {
+      if (!selectedToken) return "Please select a token.";
+      if (usdcAmount <= 0) return "Please enter a USDC amount greater than 0.";
+      if (!receiverAddress) return "Please enter a receiver's wallet address.";
+      if (!isValidAddress(receiverAddress))
+        return "Please enter a valid Solana wallet address.";
+      if (!canSend) return "Insufficient USDC balance.";
+      if (isTransferring) return "";
+      return "";
+    } else {
+      if (!hasFetchedPrice) return "";
+      if (!selectedToken) return "Please select a token.";
+      if (usdcAmount <= 0 && currentPrice !== null)
+        return "Please enter a USDC amount greater than 0.";
+      if (currentPrice === null) {
+        if (!hasFetchedPrice) return "Please fetch the price.";
+        else return "";
+      }
+      if (!receiverAddress) return "Please enter a receiver's wallet address.";
+      if (!isValidAddress(receiverAddress))
+        return "Please enter a valid Solana wallet address.";
+      if (!canSend) return "Insufficient balance for the selected token.";
+      if (isTransferring) return "";
+      return "";
     }
-    if (!receiverAddress) return "Please enter a receiver's wallet address.";
-    if (!isValidAddress(receiverAddress))
-      return "Please enter a valid Solana wallet address.";
-    if (!canSend) return "Insufficient balance for the selected token.";
-    if (isTransferring) return "";
-    return "";
   };
 
   return (
@@ -632,7 +672,11 @@ export default function PaymentPage() {
             <motion.button
               onClick={fetchPrice}
               className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl shadow hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center min-w-[120px]"
-              disabled={isFetchingPrice || !selectedToken}
+              disabled={
+                isFetchingPrice ||
+                !selectedToken ||
+                selectedToken.mint === USDC_MINT.toBase58()
+              }
               whileHover={{
                 scale: 1.05,
                 boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
@@ -667,83 +711,88 @@ export default function PaymentPage() {
           </motion.div>
 
           <AnimatePresence>
-            {currentPrice !== null && (
-              <motion.div
-                className="mt-4 p-3 bg-indigo-50 rounded-xl border border-indigo-100"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="flex items-center">
-                  <div className="mr-2 text-indigo-500">
-                    <svg
-                      className="w-5 h-5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+            {currentPrice !== null &&
+              selectedToken?.mint !== USDC_MINT.toBase58() && (
+                <motion.div
+                  className="mt-4 p-3 bg-indigo-50 rounded-xl border border-indigo-100"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="flex items-center">
+                    <div className="mr-2 text-indigo-500">
+                      <svg
+                        className="w-5 h-5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-indigo-700">
+                      Equivalent in {selectedToken?.symbol}:{" "}
+                      <span className="font-bold">
+                        <AnimatedNumber
+                          value={equivalentTokenAmount}
+                          decimals={selectedToken?.decimals || 2}
+                        />
+                      </span>
+                    </p>
                   </div>
-                  <p className="text-sm text-indigo-700">
-                    Equivalent in {selectedToken?.symbol}:{" "}
-                    <span className="font-bold">
-                      <AnimatedNumber
-                        value={equivalentTokenAmount}
-                        decimals={selectedToken?.decimals || 2}
-                      />
-                    </span>
-                  </p>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
           </AnimatePresence>
 
           <AnimatePresence>
-            {currentPrice === null && hasFetchedPrice && (
-              <motion.div
-                className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="flex items-center">
-                  <svg
-                    className="w-5 h-5 text-red-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    ></path>
-                  </svg>
-                  <p className="text-sm text-red-700">
-                    Trade route not available
-                  </p>
-                </div>
-              </motion.div>
-            )}
+            {currentPrice === null &&
+              hasFetchedPrice &&
+              selectedToken?.mint !== USDC_MINT.toBase58() && (
+                <motion.div
+                  className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="flex items-center">
+                    <svg
+                      className="w-5 h-5 text-red-500 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      ></path>
+                    </svg>
+                    <p className="text-sm text-red-700">
+                      Trade route not available
+                    </p>
+                  </div>
+                </motion.div>
+              )}
           </AnimatePresence>
 
-          {!hasFetchedPrice && !isFetchingPrice && (
-            <motion.p
-              className="mt-2 text-sm text-gray-500 italic"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.8 }}
-              transition={{ delay: 0.5, duration: 0.4 }}
-            >
-              Click 'Fetch Price' to calculate equivalent
-            </motion.p>
-          )}
+          {!hasFetchedPrice &&
+            !isFetchingPrice &&
+            selectedToken?.mint !== USDC_MINT.toBase58() && (
+              <motion.p
+                className="mt-2 text-sm text-gray-500 italic"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.8 }}
+                transition={{ delay: 0.5, duration: 0.4 }}
+              >
+                Click 'Fetch Price' to calculate equivalent
+              </motion.p>
+            )}
 
           <motion.div
             className="mt-6"
