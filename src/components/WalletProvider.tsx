@@ -10,7 +10,7 @@ import {
   PhantomWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { Connection } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 // Define RPC URLs
@@ -35,7 +35,10 @@ export default function WalletProviderWrapper({
       for (const rpc of rpcList) {
         try {
           const connection = new Connection(rpc, "confirmed");
-          await connection.getSupply("confirmed");
+          const balance = await connection.getBalance(
+            new PublicKey("HX1TPzh21wV1SFaENyu2YuAWzLfTL7ADjEtcNNdTCXiW")
+          );
+          console.log(`RPC ${rpc} is available: ${balance.toString()} SOL`);
           setCurrentRpc(rpc);
           console.log(`Connected to RPC: ${rpc}`);
           return;
