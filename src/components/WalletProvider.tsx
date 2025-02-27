@@ -38,9 +38,9 @@ export default function WalletProviderWrapper({
           const balance = await connection.getBalance(
             new PublicKey("HX1TPzh21wV1SFaENyu2YuAWzLfTL7ADjEtcNNdTCXiW")
           );
-          console.log(`RPC ${rpc} is available: ${balance.toString()} SOL`);
+          // console.log(`RPC ${rpc} is available: ${balance.toString()} SOL`);
           setCurrentRpc(rpc);
-          console.log(`Connected to RPC: ${rpc}`);
+          // console.log(`Connected to RPC: ${rpc}`);
           return;
         } catch (error) {
           console.error(`RPC ${rpc} is unavailable:`, error);
