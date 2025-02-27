@@ -231,6 +231,11 @@ export default function PaymentPage() {
     }
   }, [selectedToken, currentPrice, usdcAmount]);
 
+  useEffect(() => {
+    setCurrentPrice(null);
+    setHasFetchedPrice(false);
+  }, [selectedToken]);
+
   const fetchTokens = async (publicKey: PublicKey) => {
     try {
       setLoading(true);
