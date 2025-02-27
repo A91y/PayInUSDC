@@ -208,45 +208,6 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (selectedToken) {
-      if (selectedToken.mint === SOL_TOKEN.mint) {
-        // For SOL: calculate equivalent based on price (SOL per USDC)
-        if (currentPrice && usdcAmount > 0) {
-          const equivalent = usdcAmount / currentPrice;
-          setEquivalentTokenAmount(equivalent);
-          const requiredAmount = BigInt(
-            Math.ceil(equivalent * 10 ** selectedToken.decimals)
-          );
-          const userBalance = BigInt(selectedToken.amount);
-          setCanSend(userBalance >= requiredAmount);
-        } else {
-          setEquivalentTokenAmount(0);
-          setCanSend(false);
-        }
-      } else if (selectedToken.mint === USDC_MINT.toBase58()) {
-        // For USDC: use amount directly
-        setEquivalentTokenAmount(usdcAmount);
-        const requiredAmount = BigInt(
-          Math.floor(usdcAmount * 10 ** selectedToken.decimals)
-        );
-        const userBalance = BigInt(selectedToken.amount);
-        setCanSend(usdcAmount > 0 && userBalance >= requiredAmount);
-      } else if (currentPrice && usdcAmount > 0) {
-        // For other tokens
-        const decimals = selectedToken.decimals;
-        const equivalent = (usdcAmount * currentPrice) / 10 ** decimals;
-        setEquivalentTokenAmount(equivalent);
-        const requiredAmount = BigInt(Math.floor(equivalent * 10 ** decimals));
-        const userBalance = BigInt(selectedToken.amount);
-        setCanSend(userBalance >= requiredAmount);
-      } else {
-        setEquivalentTokenAmount(0);
-        setCanSend(false);
-      }
-    }
-  }, [selectedToken, currentPrice, usdcAmount]);
-
-  useEffect(() => {
-    if (selectedToken) {
       if (selectedToken.mint === USDC_MINT.toBase58()) {
         // For USDC, use the entered amount directly
         setEquivalentTokenAmount(usdcAmount);
